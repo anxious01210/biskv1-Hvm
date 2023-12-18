@@ -1,0 +1,192 @@
+Developement server for miltiple Django Project (Ubuntu 22.04 _ Django 4.2.8 _ uWSGI _ nginx)
+I did this test on vmware workstation vm
+- + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + 
+The link that I adopted to do it:
+https://www.digitalocean.com/community/tutorials/how-to-serve-django-applications-with-uwsgi-and-nginx-on-ubuntu-16-04#install-and-configure-virtualenv-and-virtualenvwrapper
+- + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + 
+1)
+If you are using Python 3, type:
+
+    sudo apt-get update
+    sudo apt-get install python3-pip
+
+Now that you have pip installed, we can install virtualenv and virtualenvwrapper globally. We will also upgrade pip to the latest version using pip itself.
+
+If you are using Python 3, type:
+
+    sudo -H pip3 install --upgrade pip
+    sudo -H pip3 install virtualenv virtualenvwrapper
+
+With these components installed, we can now configure our shell with the information it needs to work with the virtualenvwrapper script. Our virtual environments will all be placed within a directory in our home folder called Env for easy access. This is configured through an environmental variable called WORKON_HOME. We can add this to our shell initialization script and can source the virtual environment wrapper script.
+
+If you are using Python 3 and the pip3 command, you will have to add an additional line to your shell initialization script as well:
+
+    echo "export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3" >> ~/.bashrc
+
+Regardless of which version of Python you are using, you need to run the following commands:
+
+    echo "export WORKON_HOME=~/Env" >> ~/.bashrc
+    echo "source /usr/local/bin/virtualenvwrapper.sh" >> ~/.bashrc
+
+Now, source your shell initialization script so that you can use this functionality in your current session:
+
+    source ~/.bashrc
+
+You should now have directory called Env in your home folder which will hold virtual environment information.
+
+
+2)
+Create the First Project
+
+We can create a virtual environment easily by using some commands that the virtualenvwrapper script makes available to us.
+
+Create your first virtual environment with the name of your first site or project by typing:
+
+    mkvirtualenv P01_biskv01
+
+This will create a virtual environment, install Python and pip within it, and activate the environment. Your prompt will change to indicate that you are now operating within your new virtual environment. It will look something like this: (P01_biskv01) mehdi@vm:~/Django/P01$ . The value in the parentheses is the name of your virtual environment. Any software installed through pip will now be installed into the virtual environment instead of on the global system. This allows us to isolate our packages on a per-project basis.
+
+Our first step will be to install Django itself. We can use pip for this without sudo since we are installing this locally in our virtual environment:
+
+    pip install django
+
+With Django installed, we can create our first sample project by typing:
+
+    (P01_biskv01) mehdi@vm:~/Django/P01$ django-admin.py startproject biskv1
+    
+
+This will create a directory called biskv1 within your (~/Django/P01) directory. Within this is a management script used to handle various aspects of the project and another directory of the same name used to house the actual project code.
+
+Move into the first level directory so that we can begin setting up the minimum requirements for our sample project.
+
+    cd ~/Django/P01
+
+Begin by migrating the database to initialize the SQLite database that our project will use. You can set up an alternative database for your application if you wish, but this is outside of the scope of this guide:
+
+    (P01_biskv01) mehdi@vm:~/Django/P01$ python3 manage.py migrate
+
+You should now have a database file called db.sqlite3 in your project directory. Now, we can create an administrative user by typing:
+
+    (P01_biskv01) mehdi@vm:~/Django/P01$ python3  createsuperuser
+
+At this point, your project directory (~/Django/P01 in our case) should have the following content:
+
+    ~/Django/P01/manage.py: A Django project management script.
+    ~/Django/P01/biskv1/: The Django project package. This should contain the __init__.py, settings.py, urls.py, and wsgi.py files.
+    ~/Django/P01/db.sqlite3: The SQLite database file used to store your site information.
+
+Next, open the settings file for the project with your text editor:
+
+    (P01_biskv01) mehdi@vm: nano ~/Django/P01$biskv1/settings.py
+
+Start by locating the ALLOWED_HOSTS directive. This defines a list of the server’s addresses or domain names that may be used to connect to the Django instance. Any incoming requests with a Host header that is not in this list will raise an exception. Django requires that you set this to prevent a certain class of security vulnerability.
+
+In the square brackets, list the IP addresses or domain names that are associated with your Django server. Each item should be listed in quotations with entries separated by a comma. If you wish requests for an entire domain and any subdomains, prepend a period to the beginning of the entry. In the snippet below, there are a few commented out examples used to demonstrate:
+~/Django/P01/biskv1/settings.py
+
+. . .
+# The simplest case: just add the domain name(s) and IP addresses of your Django server
+# ALLOWED_HOSTS = [ 'example.com', '203.0.113.5']
+# To respond to 'example.com' and any subdomains, start the domain with a dot
+# ALLOWED_HOSTS = ['.example.com', '203.0.113.5']
+ALLOWED_HOSTS = ['your_server_domain_or_IP', 'second_domain_or_IP', . . .]
+
+Since we will be setting up Nginx to serve our site, we need to configure a directory which will hold our site’s static assets. This will allow Nginx to serve these directly, which will have a positive impact on performance. We will tell Django to place these into a directory called static in our project’s base directory. Add this line to the bottom of the file to configure this behavior:
+~/Django/P01/biskv1/settings.py
+
+. . .
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+
+Save and close the file when you are finished. Now, collect our site’s static elements and place them within that directory by typing:
+
+    (P01_biskv01) mehdi@vm:~/Django/P01$ python3 manage.py collectstatic
+
+You may be asked to type “yes” to confirm the action and collect the static content. There will be a new directory called static in your project directory.
+
+Next, we can open a port so that we can access the Django development server. If you followed the initial server setup guide, you should have a UFW firewall enabled. Allow connections to port 8080 by typing:
+
+    (P01_biskv01) mehdi@vm:~/Django/P01$ sudo ufw allow 8080
+
+With all of that out of the way, we can test our project by temporarily starting the development server. Type:
+
+    (P01_biskv01) mehdi@vm:~/Django/P01$ python3 manage.py runserver 0.0.0.0:8080
+
+This will start up the development server on port 8080. Visit your server’s domain name or IP address followed by 8080 in your browser:
+
+http://server_domain_or_IP:8080
+
+- + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + 
+Do the same for the 2nd Django project (P02)
+
+- + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + - + 
+
+Setting up the uWSGI Application Server
+
+Now that we have two Django projects set up and ready to go, we can configure uWSGI. uWSGI is an application server that can communicate with applications over a standard interface called WSGI.
+
+Installing uWSGI
+
+Unlike the guide linked above, in this tutorial, we will be installing uWSGI globally. This will create less friction in handling multiple Django projects. Before we can install uWSGI, we need the Python development files that the software relies on. We can install this directly from Ubuntu’s repositories
+
+If you are using Python 3, type:
+
+    sudo apt-get install python3-dev
+
+Now that the development files are available, we can install uWSGI globally through pip.
+
+
+If you are using Python 3, type:
+
+    sudo -H pip3 install uwsgi
+
+We can quickly test this application server by passing it the information for one of our sites. For instance, we can tell it to serve our first project by typing:
+	$ uwsgi --http :8080 --home /home/mehdi/Env/P01_biskv01 --chdir /home/mehdi/Django/P01 -w biskv1.wsgi
+
+
+Here, we’ve told uWSGI to use our virtual environment located in our ~/Env directory, to change to our project’s directory, and to use the wsgi.py file stored within our inner biskv1 directory to serve the file (using the biskv1.wsgi Python module syntax). For our demonstration, we told it to serve HTTP on port 8080.
+
+If you go to server’s domain name or IP address in your browser, followed by :8080, you will see your site again (the static elements in the /admin interface, like CSS, won’t work yet). When you are finished testing out this functionality, type CTRL-C in the terminal.
+
+
+
+
+Creating Configuration Files
+
+Running uWSGI from the command line is useful for testing, but isn’t particularly helpful for an actual deployment. Instead, we will run uWSGI in “Emperor mode”, which allows a master process to manage separate applications automatically given a set of configuration files.
+
+Create a directory that will hold your configuration files. Since this is a global process, we will create a directory called /etc/uwsgi/sites to store our configuration files:
+	$ udo mkdir -p /etc/uwsgi/sites
+
+
+
+	sudo mkdir /etc/uwsgi/sites		==>		Creates only the sites directory. If /etc/uwsgi doesn't exist, the command will fail.
+	sudo mkdir -p /etc/uwsgi/sites	==>		Creates both the sites directory and any missing parent directories, in this case /etc/uwsgi.
+
+
+In this directory, we will place our configuration files. We need a configuration file for each of the projects we are serving. The uWSGI process can take configuration files in a variety of formats, but we will use .ini files due to their simplicity.
+
+Create a file for your first project and open it in your text editor:
+
+    sudo nano /etc/uwsgi/sites/biskv1.ini
+
+Inside, we must begin with the [uwsgi] section header. All of our information will go beneath this header. We are also going to use variables to make our configuration file more reusable. After the header, set a variable called project with the name of your first project. Add a variable called uid which holds your sudo username.
+
+We will also add a variable called base with the path to your user’s home directory. This will be constructed from the username we set using the %(variable_name) syntax. This will be replaced by the value of the variable when the config is read:
+/etc/uwsgi/sites/biskv1.ini
+[uwsgi]
+project = biskv1
+uid = mehdi
+base = ~/%(uid)/Django/P01
+
+
+
+
+
+
+
+
+
+
+
+

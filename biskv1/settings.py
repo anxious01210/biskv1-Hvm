@@ -27,7 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', '0.0.0.0', ]
 
-# Debug Toolbar
+# debug-toolbar
 INTERNAL_IPS = [
     # ...
     "127.0.0.1",
@@ -38,6 +38,7 @@ INTERNAL_IPS = [
 # Application definition
 
 INSTALLED_APPS = [
+    # website app
     'website.apps.WebsiteConfig',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # debug-toolbar
     'debug_toolbar',
 ]
 
@@ -56,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # debug-toolbar
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
